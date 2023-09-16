@@ -2,7 +2,10 @@ defmodule Servy.Handler do
   @moduledoc """
   Module for handling incoming requests
   """
-  require Logger
+
+  import Servy.Plugins, only: [rewrite_path: 1, log_error: 1, emojify: 1]
+  import Servy.FileHandler, only: [handle_file: 2]
+  import Servy.Parser, only: [parse: 1]
 
   @pages_path Path.expand("../../pages", __DIR__)
 
@@ -18,35 +21,6 @@ defmodule Servy.Handler do
     |> log_error
     |> format_response
   end
-
-  def parse(request) do
-    [method, path, _] =
-      request
-      |> String.split("\n")
-      |> List.first()
-      |> String.split(" ")
-
-    %{method: method, path: path, resp_body: "", status: nil}
-  end
-
-  def rewrite_path(%{path: path} = conv) do
-    regex = ~r{\/(?<thing>\w+)\?id=(?<id>\d+)}
-    captures = Regex.named_captures(regex, path)
-    rewrite_path_captures(conv, captures)
-  end
-
-  def rewrite_path_captures(conv, %{"thing" => thing, "id" => id}) do
-    %{conv | path: "/#{thing}/#{id}"}
-  end
-
-  def rewrite_path_captures(conv, nil), do: conv
-
-  def log_error(%{status: 404, path: path} = conv) do
-    Logger.error("404 Not Found\nPath #{path}")
-    conv
-  end
-
-  def log_error(conv), do: conv
 
   def route(%{method: "GET", path: "/about"} = conv) do
     @pages_path
@@ -89,15 +63,6 @@ defmodule Servy.Handler do
     """
   end
 
-  def emojify(%{status: 200} = conv) do
-    emojies = String.duplicate("🎉", 5)
-    body = emojies <> "\n" <> conv.resp_body <> "\n" <> emojies
-
-    %{conv | resp_body: body}
-  end
-
-  def emojify(conv), do: conv
-
   defp status_reason(code) do
     %{
       200 => "OK",
@@ -107,18 +72,6 @@ defmodule Servy.Handler do
       404 => "Not Found",
       500 => "Internal Server Error"
     }[code]
-  end
-
-  def handle_file({:ok, content}, conv) do
-    %{conv | status: 200, resp_body: content}
-  end
-
-  def handle_file({:error, :enoent}, conv) do
-    %{conv | status: 404, resp_body: "File not found!"}
-  end
-
-  def handle_file({:error, reason}, conv) do
-    %{conv | status: 500, resp_body: "File error: #{reason}"}
   end
 end
 
