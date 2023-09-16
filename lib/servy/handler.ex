@@ -1,11 +1,13 @@
 defmodule Servy.Handler do
+  require Logger
+
   def handle(request) do
     request
     |> parse
-    |> log
     |> rewrite_path
     |> route
     |> emojify
+    |> log_error
     |> format_response
   end
 
@@ -31,7 +33,12 @@ defmodule Servy.Handler do
 
   def rewrite_path_captures(conv, nil), do: conv
 
-  def log(conv), do: IO.inspect(conv)
+  def log_error(%{status: 404, path: path} = conv) do
+    Logger.error("404 Not Found\nPath #{path}")
+    conv
+  end
+
+  def log_error(conv), do: conv
 
   def route(%{method: "GET", path: "/wildthings"} = conv) do
     %{conv | resp_body: "Bears, Lions, Tigers", status: 200}
