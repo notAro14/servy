@@ -7,7 +7,7 @@ defmodule Servy.Handler do
   import Servy.FileHandler, only: [handle_file: 2]
   import Servy.Parser, only: [parse: 1]
 
-  @pages_path Path.expand("../../pages", __DIR__)
+  @pages_path Path.expand("pages", File.cwd!())
 
   @doc """
   Main function for handling requests
