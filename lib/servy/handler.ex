@@ -3,6 +3,7 @@ defmodule Servy.Handler do
     request
     |> parse
     |> log
+    |> rewrite_path
     |> route
     |> emojify
     |> format_response
@@ -17,6 +18,18 @@ defmodule Servy.Handler do
 
     %{method: method, path: path, resp_body: "", status: nil}
   end
+
+  def rewrite_path(%{path: path} = conv) do
+    regex = ~r{\/(?<thing>\w+)\?id=(?<id>\d+)}
+    captures = Regex.named_captures(regex, path)
+    rewrite_path_captures(conv, captures)
+  end
+
+  def rewrite_path_captures(conv, %{"thing" => thing, "id" => id}) do
+    %{conv | path: "/#{thing}/#{id}"}
+  end
+
+  def rewrite_path_captures(conv, nil), do: conv
 
   def log(conv), do: IO.inspect(conv)
 
