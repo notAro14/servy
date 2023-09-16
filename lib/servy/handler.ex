@@ -1,6 +1,8 @@
 defmodule Servy.Handler do
   require Logger
 
+  @pages_path Path.expand("../../pages", __DIR__)
+
   def handle(request) do
     request
     |> parse
@@ -40,6 +42,13 @@ defmodule Servy.Handler do
 
   def log_error(conv), do: conv
 
+  def route(%{method: "GET", path: "/about"} = conv) do
+    @pages_path
+    |> Path.join("about.html")
+    |> File.read()
+    |> handle_file(conv)
+  end
+
   def route(%{method: "GET", path: "/wildthings"} = conv) do
     %{conv | resp_body: "Bears, Lions, Tigers", status: 200}
   end
@@ -60,7 +69,7 @@ defmodule Servy.Handler do
     %{conv | status: 403, resp_body: "Bears must never be deleted!"}
   end
 
-  def route(%{method: _method, path: path} = conv) do
+  def route(%{path: path} = conv) do
     %{conv | status: 404, resp_body: "No #{path} here"}
   end
 
@@ -93,36 +102,28 @@ defmodule Servy.Handler do
       500 => "Internal Server Error"
     }[code]
   end
+
+  def handle_file({:ok, content}, conv) do
+    %{conv | status: 200, resp_body: content}
+  end
+
+  def handle_file({:error, :enoent}, conv) do
+    %{conv | status: 404, resp_body: "File not found!"}
+  end
+
+  def handle_file({:error, reason}, conv) do
+    %{conv | status: 500, resp_body: "File error: #{reason}"}
+  end
 end
 
-# request = """
-# GET /wildthings HTTP/1.1
-# Host: example.com
-# User-Agent: ExampleBrowser/1.0
-# Accept: */*
+request = """
+GET /about HTTP/1.1
+Host: example.com
+User-Agent: ExampleBrowser/1.0
+Accept: */*
 
-# """
+"""
 
-# request = """
-# GET /bears HTTP/1.1
-# Host: example.com
-# User-Agent: ExampleBrowser/1.0
-# Accept: */*
+response = Servy.Handler.handle(request)
 
-# """
-
-# request = """
-# GET /bears/14 HTTP/1.1
-# Host: example.com
-# User-Agent: ExampleBrowser/1.0
-# Accept: */*
-
-# """
-
-# request = """
-# GET /bigfoots HTTP/1.1
-# Host: example.com
-# User-Agent: ExampleBrowser/1.0
-# Accept: */*
-
-# """
+IO.puts(response)
